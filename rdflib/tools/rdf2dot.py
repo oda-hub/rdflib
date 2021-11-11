@@ -12,8 +12,10 @@ You can draw the graph of an RDF file directly:
 import rdflib
 import rdflib.extras.cmdlineutils
 
+import re
 import sys
 import html
+import yaml
 import collections
 
 from rdflib import XSD
@@ -24,6 +26,7 @@ LABEL_PROPERTIES = [
     rdflib.URIRef("http://xmlns.com/foaf/0.1/name"),
     rdflib.URIRef("http://www.w3.org/2006/vcard/ns#fn"),
     rdflib.URIRef("http://www.w3.org/2006/vcard/ns#org"),
+    rdflib.URIRef("http://purl.org/dc/terms/title"),
 ]
 
 XSDTERMS = [
@@ -78,11 +81,14 @@ NODECOLOR = "black"
 ISACOLOR = "black"
 
 
-def rdf2dot(g, stream, opts={}):
+def rdf2dot(g, stream, opts=None):
     """
     Convert the RDF graph to DOT
     writes the dot output to the stream
     """
+
+    if opts in [None, []]:
+        opts = {}            
 
     fields = collections.defaultdict(set)
     nodes = {}
@@ -120,43 +126,67 @@ def rdf2dot(g, stream, opts={}):
         except:
             return x
 
-    def color(p):
-        return "BLACK"
+    def default_color(p, placement='arrow'):
+        for k, v in yaml.load(open("coloring.yaml"), Loader=yaml.SafeLoader).items():
+            if re.match(k, p):        
+                #print("found", placement, v, v.get(placement, 'black'))        
+                return v.get(placement, 'black')
 
-    stream.write('digraph { \n node [ fontname="DejaVu Sans" ] ; \n')
+        return "black"
+
+    color = opts.get('color', default_color)
+    
+
+    stream.write('''
+            digraph { 
+                node [ fontname="DejaVuSans-Oblique" ] ;
+                ranksep = 2;
+                startType = 0;
+                overlap = scale;
+
+    ''')
 
     for s, p, o in g:
         sn = node(s)
+
         if p == rdflib.RDFS.label:
             continue
+
         if isinstance(o, (rdflib.URIRef, rdflib.BNode)):
             on = node(o)
-            opstr = (
-                "\t%s -> %s [ color=%s, label=< <font point-size='10' "
-                + "color='#336633'>%s</font> > ] ;\n"
+            stream.write(
+                f"""
+                    \t{sn} -> {on} [ color={color(p)}, label=< <font point-size='15' 
+                                     color='#666666'>{qname(p ,g)}</font> > ] ;
+                """
             )
-            stream.write(opstr % (sn, on, color(p), qname(p, g)))
         else:
             fields[sn].add((qname(p, g), formatliteral(o, g)))
 
     for u, n in nodes.items():
         stream.write("# %s %s\n" % (u, n))
         f = [
-            "<tr><td align='left'>%s</td><td align='left'>%s</td></tr>" % x
-            for x in sorted(fields[n])
+#            f"<tr><td align='left'>{x[0]}</td><td align='left'>{x[1]}</td></tr>"
+            f'<br/><font point-size="10">{x[0]}: {x[1]}</font>'
+                for x in sorted(fields[n])            
         ]
-        opstr = (
-            "%s [ shape=none, color=%s label=< <table color='#666666'"
-            + " cellborder='0' cellspacing='0' border='1'><tr>"
-            + "<td colspan='2' bgcolor='grey'><B>%s</B></td></tr><tr>"
-            + "<td href='%s' bgcolor='#eeeeee' colspan='2'>"
-            + "<font point-size='10' color='#6666ff'>%s</font></td>"
-            + "</tr>%s</table> > ] \n"
-        )
+
+        full_uri_row =  f"""
+              <td href='{u}' bgcolor='{color(u, 'bgcolor')}' colspan='2'>
+              <font point-size='5' color='#6666ff'>{html.escape(u)}</font></td>
+        """
+        #TODO: control inserting it 
+
         stream.write(
-            opstr
-            % (n, NODECOLOR, html.escape(label(u, g)), u, html.escape(u), "".join(f))
-        )
+            re.sub("[\n ]+", " ", f"""{n} [ shape=record, color={NODECOLOR} height=0.1 width=0.1 margin="0.1,0.1" label=<  
+                            <font color='{color(u, 'node_label').strip()}'><B>
+                                {html.escape(label(u, g)).strip()}
+                            </B></font>
+                            {''.join(f)}
+                        > 
+                    ]""")
+        )        
+        #{''.join(f)}
 
     stream.write("}\n")
 
