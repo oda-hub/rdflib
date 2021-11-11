@@ -143,7 +143,7 @@ def rdf2dot(g, stream, opts=None):
     stream.write('''
             digraph { 
                 node [ fontname="DejaVuSans-Oblique" ] ;
-                ranksep = 2;
+                ranksep = 3;
                 startType = 0;
                 overlap = scale;
 
@@ -192,7 +192,7 @@ def rdf2dot(g, stream, opts=None):
                               </tr>
                             {''.join(f)}
                             </table>
-                        > 
+                        >, tooltip = "{u}"
                     ]""")
         )        
         #{''.join(f)}
