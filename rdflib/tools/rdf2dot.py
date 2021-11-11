@@ -127,10 +127,13 @@ def rdf2dot(g, stream, opts=None):
             return x
 
     def default_color(p, placement='arrow'):
+        color = None
         for k, v in yaml.load(open("coloring.yaml"), Loader=yaml.SafeLoader).items():
             if re.match(k, p):        
-                #print("found", placement, v, v.get(placement, 'black'))        
-                return v.get(placement, 'black')
+                color = v.get(placement, None)
+                
+                if color is not None:
+                    return color
 
         return "black"
 
@@ -166,23 +169,29 @@ def rdf2dot(g, stream, opts=None):
     for u, n in nodes.items():
         stream.write("# %s %s\n" % (u, n))
         f = [
-#            f"<tr><td align='left'>{x[0]}</td><td align='left'>{x[1]}</td></tr>"
-            f'<br/><font point-size="10">{x[0]}: {x[1]}</font>'
+           f"""<tr><td align='left'><font point-size="10">{x[0]}: </font></td><td align='left'><font point-size="10">{x[1]}</font></td></tr>"""
                 for x in sorted(fields[n])            
         ]
 
         full_uri_row =  f"""
+        
               <td href='{u}' bgcolor='{color(u, 'bgcolor')}' colspan='2'>
               <font point-size='5' color='#6666ff'>{html.escape(u)}</font></td>
         """
         #TODO: control inserting it 
 
         stream.write(
-            re.sub("[\n ]+", " ", f"""{n} [ shape=record, color={NODECOLOR} height=0.1 width=0.1 margin="0.1,0.1" label=<  
-                            <font color='{color(u, 'node_label').strip()}'><B>
-                                {html.escape(label(u, g)).strip()}
-                            </B></font>
+            re.sub("[\n ]+", " ", f"""{n} [ shape=record, fillcolor={color(u, 'bgcolor')}, style=filled color={color(u, 'node_color')} height=0.1 width=0.1 margin="0.1,0.1" label=<  
+                            <table border="0" cellpadding="2" cellspacing="1">
+                              <tr>
+                                <td colspan="2" href="{u}">
+                                  <font color='{color(u, 'node_label').strip()}'><B>
+                                    {html.escape(label(u, g)).strip()}
+                                  </B></font>
+                                </td>
+                              </tr>
                             {''.join(f)}
+                            </table>
                         > 
                     ]""")
         )        
