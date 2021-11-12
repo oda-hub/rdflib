@@ -9,6 +9,7 @@ You can draw the graph of an RDF file directly:
 
 """
 
+import os
 import rdflib
 import rdflib.extras.cmdlineutils
 
@@ -26,7 +27,7 @@ LABEL_PROPERTIES = [
     rdflib.URIRef("http://xmlns.com/foaf/0.1/name"),
     rdflib.URIRef("http://www.w3.org/2006/vcard/ns#fn"),
     rdflib.URIRef("http://www.w3.org/2006/vcard/ns#org"),
-    rdflib.URIRef("http://purl.org/dc/terms/title"),
+    rdflib.URIRef("http://purl.org/dc/terms/title"),    
 ]
 
 XSDTERMS = [
@@ -128,7 +129,8 @@ def rdf2dot(g, stream, opts=None):
 
     def default_color(p, placement='arrow'):
         color = None
-        for k, v in yaml.load(open("coloring.yaml"), Loader=yaml.SafeLoader).items():
+        
+        for k, v in yaml.load(open(os.path.join(os.getenv("HOME"), "coloring.yaml")), Loader=yaml.SafeLoader).items():
             if re.match(k, p):        
                 color = v.get(placement, None)
                 
@@ -143,9 +145,9 @@ def rdf2dot(g, stream, opts=None):
     stream.write('''
             digraph { 
                 node [ fontname="DejaVuSans-Oblique" ] ;
-                ranksep = 3;
-                startType = 0;
-                overlap = scale;
+                ranksep = 1;
+                startType = 0
+                overlap = false;
 
     ''')
 
@@ -159,7 +161,7 @@ def rdf2dot(g, stream, opts=None):
             on = node(o)
             stream.write(
                 f"""
-                    \t{sn} -> {on} [ color={color(p)}, label=< <font point-size='15' 
+                    \t{sn} -> {on} [ color={color(p, 'arrow')}, label=< <font point-size='15' 
                                      color='#666666'>{qname(p ,g)}</font> > ] ;
                 """
             )
@@ -180,8 +182,20 @@ def rdf2dot(g, stream, opts=None):
         """
         #TODO: control inserting it 
 
+        #TODO: not actually color
+        pos_line = ""
+        if color(u, 'pos'):
+            pos_line = 'pos = "' + color(u, 'pos') + '"'
+
         stream.write(
-            re.sub("[\n ]+", " ", f"""{n} [ shape=record, fillcolor={color(u, 'bgcolor')}, style=filled color={color(u, 'node_color')} height=0.1 width=0.1 margin="0.1,0.1" label=<  
+            re.sub("[\n ]+", " ", f"""{n} [ 
+                    shape=record
+                    fillcolor={color(u, 'bgcolor')}
+                    style=filled color={color(u, 'node_color')} 
+                    height=0.1 width=0.1 margin="0.1,0.1" 
+                    {pos_line}
+
+                    label=<  
                             <table border="0" cellpadding="2" cellspacing="1">
                               <tr>
                                 <td colspan="2" href="{u}">
