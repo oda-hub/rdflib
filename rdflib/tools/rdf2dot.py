@@ -171,15 +171,8 @@ def rdf2dot(g, stream, opts=None):
     for u, n in nodes.items():
         stream.write("# %s %s\n" % (u, n))
         f = [
-           f"""<tr><td align='left'><font point-size="10">{x[0]}: </font></td><td align='left'><font point-size="10">{x[1]}</font></td></tr>"""
-                for x in sorted(fields[n])            
         ]
 
-        full_uri_row =  f"""
-        
-              <td href='{u}' bgcolor='{color(u, 'bgcolor')}' colspan='2'>
-              <font point-size='5' color='#6666ff'>{html.escape(u)}</font></td>
-        """
         #TODO: control inserting it 
 
         #TODO: not actually color
